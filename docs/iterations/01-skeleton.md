@@ -138,8 +138,8 @@ Create the following files in `src/engine/`. These are **type stubs only** — f
 
 After all tasks are checked off and acceptance criteria pass:
 
-- [x] Commit all changes with a message describing the iteration
-- [ ] Push to `main`
+- [x] Commit all changes with a message describing the iteration (f89314b)
+- [ ] Push to `main` — **BLOCKED: no git remote configured. Add remote then `git push -u origin main`.**
 
 ---
 
