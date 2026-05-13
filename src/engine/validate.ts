@@ -183,3 +183,70 @@ export function validateContract(hand: Hand, contract: ContractSpec): boolean {
   const sorted = [...contract].sort((a, b) => b.size - a.size);
   return assignToMelds(hand, sorted, 0);
 }
+
+// Validate a meld of any size >= minimum (group or sequence), all cards used.
+function isValidFlexMeld(cards: AnyCard[], type: 'group' | 'sequence'): boolean {
+  const n = cards.length;
+  return type === 'group' ? isValidGroup(cards, n) : isValidSequence(cards, n);
+}
+
+// Backtracking over flexible meld sizes: each meld must have >= contract[i].size cards,
+// and ALL hand cards must be assigned. Returns true if any valid assignment exists.
+function assignFlexible(hand: AnyCard[], contract: ContractSpec, meldIdx: number): boolean {
+  if (meldIdx === contract.length) return hand.length === 0;
+
+  const meld = contract[meldIdx];
+  const remainingMin = contract.slice(meldIdx + 1).reduce((s, m) => s + m.size, 0);
+  const maxSize = hand.length - remainingMin;
+
+  for (let size = meld.size; size <= maxSize; size++) {
+    if (tryFlexSubsets(hand, size, meld.type, contract, meldIdx + 1)) return true;
+  }
+  return false;
+}
+
+function tryFlexSubsets(
+  hand: AnyCard[],
+  size: number,
+  type: 'group' | 'sequence',
+  contract: ContractSpec,
+  nextMeldIdx: number
+): boolean {
+  const n = hand.length;
+  if (n < size) return false;
+  const indices = Array.from({ length: size }, (_, i) => i);
+
+  const next = (): boolean => {
+    const subset = indices.map((i) => hand[i]);
+    if (isValidFlexMeld(subset, type)) {
+      const rest = hand.filter((_, i) => !indices.includes(i));
+      if (assignFlexible(rest, contract, nextMeldIdx)) return true;
+    }
+    let i = size - 1;
+    while (i >= 0 && indices[i] === n - size + i) i--;
+    if (i < 0) return false;
+    indices[i]++;
+    for (let j = i + 1; j < size; j++) indices[j] = indices[j - 1] + 1;
+    return next();
+  };
+
+  return next();
+}
+
+// Returns true if ALL cards can be covered by melds matching the contract pattern
+// (meld types match, each meld >= minimum size, no leftover cards).
+// Used for going-out validation: caller removes one discard card first.
+export function validateContractFlexible(hand: Hand, contract: ContractSpec): boolean {
+  const minTotal = contract.reduce((s, m) => s + m.size, 0);
+  if (hand.length < minTotal) return false;
+  return assignFlexible([...hand], contract, 0);
+}
+
+// Returns true if some single card can be discarded leaving a hand that fully satisfies the contract.
+export function canGoOut(hand: Hand, contract: ContractSpec): boolean {
+  for (let i = 0; i < hand.length; i++) {
+    const without = hand.filter((_, j) => j !== i);
+    if (validateContractFlexible(without, contract)) return true;
+  }
+  return false;
+}

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { isWild, isValidGroup, isValidSequence, validateContract } from '../../src/engine/validate';
+import { isWild, isValidGroup, isValidSequence, validateContract, validateContractFlexible, canGoOut } from '../../src/engine/validate';
 import { CONTRACTS } from '../../src/engine/contracts';
 import type { AnyCard } from '../../src/engine/types';
 
@@ -218,5 +218,72 @@ describe('validateContract', () => {
       C('3', 'hearts'), C('5', 'clubs'), C('7', 'diamonds'),
     ];
     expect(validateContract(hand, CONTRACTS[0])).toBe(false);
+  });
+});
+
+describe('validateContractFlexible', () => {
+  it('round 1 with 11 cards: 6 Kings + 5 Queens forms two flexible groups', () => {
+    // group of 6 Kings + group of 5 Queens = 11 cards covering CONTRACTS[0] ([g3, g3])
+    const hand: AnyCard[] = [
+      C('K', 'clubs'), C('K', 'diamonds'), C('K', 'hearts'), C('K', 'spades'),
+      C('K', 'clubs'), C('K', 'diamonds'), // 6 Kings
+      C('Q', 'clubs'), C('Q', 'diamonds'), C('Q', 'hearts'), C('Q', 'spades'), C('Q', 'clubs'), // 5 Queens
+    ];
+    expect(validateContractFlexible(hand, CONTRACTS[0])).toBe(true);
+  });
+
+  it('round 6 with 11 cards: exact fit (1×3 + 2×4 = 11)', () => {
+    const hand: AnyCard[] = [
+      C('A', 'clubs'), C('A', 'hearts'), C('A', 'spades'),
+      C('3', 'diamonds'), C('4', 'diamonds'), C('5', 'diamonds'), C('6', 'diamonds'),
+      C('8', 'hearts'), C('9', 'hearts'), C('10', 'hearts'), C('J', 'hearts'),
+    ];
+    expect(validateContractFlexible(hand, CONTRACTS[5])).toBe(true);
+  });
+
+  it('false: 11 all-different cards cannot form 2 groups (no matching ranks)', () => {
+    const hand: AnyCard[] = [
+      C('K', 'clubs'), C('Q', 'hearts'), C('J', 'spades'), C('10', 'diamonds'), C('9', 'clubs'),
+      C('8', 'hearts'), C('7', 'spades'), C('6', 'clubs'), C('5', 'diamonds'), C('4', 'hearts'),
+      C('3', 'spades'),
+    ];
+    expect(validateContractFlexible(hand, CONTRACTS[0])).toBe(false);
+  });
+
+  it('false: hand shorter than contract minimum', () => {
+    const hand: AnyCard[] = [C('K', 'clubs'), C('K', 'hearts'), C('K', 'spades')];
+    // CONTRACTS[2] is 2×4 = 8 minimum; 3 < 8
+    expect(validateContractFlexible(hand, CONTRACTS[2])).toBe(false);
+  });
+
+  it('jokers make flexible groups possible', () => {
+    // 3 Kings + 3 jokers = group of 3 Kings + group of 3 jokers (all-wild group = valid)
+    const hand: AnyCard[] = [
+      C('K', 'clubs'), C('K', 'hearts'), C('K', 'spades'),
+      J(), J(), J(),
+    ];
+    expect(validateContractFlexible(hand, CONTRACTS[0])).toBe(true);
+  });
+});
+
+describe('canGoOut', () => {
+  it('true: 12-card hand where one card can be discarded leaving 2 valid flexible groups', () => {
+    // 6 Kings + 5 Queens + 1 extra card
+    const hand: AnyCard[] = [
+      C('K', 'clubs'), C('K', 'diamonds'), C('K', 'hearts'), C('K', 'spades'),
+      C('K', 'clubs'), C('K', 'diamonds'),
+      C('Q', 'clubs'), C('Q', 'diamonds'), C('Q', 'hearts'), C('Q', 'spades'), C('Q', 'clubs'),
+      C('5', 'hearts'), // extra — discard this to go out
+    ];
+    expect(canGoOut(hand, CONTRACTS[0])).toBe(true);
+  });
+
+  it('false: 12 all-different cards, no discard helps', () => {
+    const hand: AnyCard[] = [
+      C('K', 'clubs'), C('Q', 'hearts'), C('J', 'spades'), C('10', 'diamonds'), C('9', 'clubs'),
+      C('8', 'hearts'), C('7', 'spades'), C('6', 'clubs'), C('5', 'diamonds'), C('4', 'hearts'),
+      C('3', 'spades'), C('A', 'clubs'),
+    ];
+    expect(canGoOut(hand, CONTRACTS[0])).toBe(false);
   });
 });

@@ -1,6 +1,1 @@
-import type { GameState as EngineGameState } from '../engine/types';
-
-export type { EngineGameState as GameState };
-
-// Action union to be defined in Iteration 3
-export type GameAction = never;
+export type { AppState as GameState, AppAction as GameAction, Phase } from './types';

@@ -1,7 +1,16 @@
+import { GameProvider, useGame } from './state/GameContext';
+import { StartScreen } from './ui/StartScreen';
+import { GameTable } from './ui/GameTable';
+
+function GameRoot() {
+  const { state } = useGame();
+  return state.phase === 'idle' ? <StartScreen /> : <GameTable />;
+}
+
 export default function App() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-green-900">
-      <h1 className="text-4xl font-bold text-white">King Gin — coming soon</h1>
-    </div>
+    <GameProvider>
+      <GameRoot />
+    </GameProvider>
   );
 }
